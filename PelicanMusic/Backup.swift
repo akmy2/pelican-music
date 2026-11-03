@@ -48,7 +48,9 @@ extension Player {
         for index in restored.playlists.indices { restored.playlists[index].trackIDs = restored.playlists[index].trackIDs.compactMap { mapping[$0] } }
         let previous = try backupData()
         try previous.write(to: root.appendingPathComponent("before-restore.json"), options: .atomic)
-        tracks = merged; save(); state = restored
+        tracks = merged
+        if let id = current?.id { current = tracks.first { $0.id == id } }
+        save(); state = restored
         return backup.tracks.count - mapping.count
     }
     func refreshMissingMetadata() {

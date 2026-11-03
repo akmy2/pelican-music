@@ -41,6 +41,7 @@ private struct MountainShape: Shape {
 }
 
 struct TrackArtwork: View {
+    @EnvironmentObject var player: Player
     let title: String
     var active = false
     private var seed: Int { title.utf8.reduce(0) { ($0 + Int($1)) % 256 } }
@@ -48,7 +49,7 @@ struct TrackArtwork: View {
         LandscapeArt(seed: seed)
             .overlay {
                 Image(systemName: active ? "waveform" : "music.note").font(.title3.weight(.semibold))
-                    .foregroundStyle(active ? StartStyle.accent : .white.opacity(0.8))
+                    .foregroundStyle(active ? player.state.settings.color : .white.opacity(0.8))
             }.clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

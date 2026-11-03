@@ -136,5 +136,5 @@ extension Player {
     func deleteTracks(_ ids: Set<UUID>) {
         remove(IndexSet(tracks.indices.filter { ids.contains(tracks[$0].id) }))
     }
-    func retryFailedImports() { importFiles(importFailures.compactMap(\.retryURL)) }
+    func retryFailedImports() { importFiles(Array(Set(importFailures.compactMap(\.retryURL)))) }
 }

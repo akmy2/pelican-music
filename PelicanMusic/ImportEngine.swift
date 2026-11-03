@@ -100,7 +100,8 @@ extension Player {
                 } catch {
                     try? FileManager.default.removeItem(at: destination)
                     try? FileManager.default.removeItem(at: directory.appendingPathComponent(id.uuidString + ".art"))
-                    problems.append(ImportFailure(name: source.lastPathComponent, message: Player.describeFileError(error), retryURL: source))
+                    let retry = urls.first { source.path.hasPrefix($0.path + "/") } ?? source
+                    problems.append(ImportFailure(name: source.lastPathComponent, message: Player.describeFileError(error), retryURL: retry))
                 }
                 let progress = Double(offset + 1) / Double(max(inputs.count, 1))
                 DispatchQueue.main.async { [weak self] in self?.importProgress = progress; self?.importStatus = "Lendo \(offset + 1) de \(inputs.count)…" }

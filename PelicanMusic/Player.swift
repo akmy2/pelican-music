@@ -135,7 +135,7 @@ final class Player: NSObject, ObservableObject {
                 guard playable else { throw NSError(domain: "START.Audio", code: 1, userInfo: [NSLocalizedDescriptionKey: "O iOS não consegue reproduzir este formato."]) }
                 // Playback already supports AirPlay. Explicit allowAirPlay is for playAndRecord.
                 do { try self.activateSession() }
-                catch { self.error = "Não foi possível ativar a saída de áudio. \(error.localizedDescription)"; return }
+                catch { self.loading = false; self.crossfadePending = false; self.error = "Não foi possível ativar a saída de áudio. \(error.localizedDescription)"; return }
                 self.loading = false
                 self.crossfadePending = false
                 let previous = self.audio
@@ -290,6 +290,7 @@ final class Player: NSObject, ObservableObject {
     }
     func sleepAtTrackEnd() { sleepDeadline = nil; stopAfterTrack = true }
     private func advanceAutomatically() {
+        guard !crossfadePending else { return }
         state.positions[current?.id.uuidString ?? ""] = 0
         if stopAfterTrack { stopAfterTrack = false; pause(); return }
         if let next = takeNext(automatic: true) { play(next, automatic: true) }
