@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var player: Player
     @EnvironmentObject var spotify: Spotify
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab = 0
     @State private var importing = false
     @State private var folder = false
@@ -26,6 +27,7 @@ struct ContentView: View {
         }
         .tint(player.state.settings.color)
         .task { player.startAutomaticArtwork() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { player.startAutomaticArtwork() } }
         .sheet(isPresented: $importing) {
             AudioImporter(folders: folder, onSelection: { urls in importing = false; player.importFiles(urls) }, onCancel: { importing = false })
         }
@@ -158,7 +160,7 @@ struct ImportStatusView: View {
         VStack(alignment: .leading, spacing: 8) {
             if player.importing {
                 ProgressView(value: player.importProgress).tint(player.state.settings.color)
-                Button("Cancelar importação", role: .destructive) { player.cancelImport() }.font(.caption)
+                Button("Cancelar importação", role: .destructive) { player.cancelImport() }.font(.caption).buttonStyle(.bordered)
             }
             if let status = player.importStatus { Text(status).font(.caption).foregroundStyle(.secondary) }
             if !player.importFailures.isEmpty {

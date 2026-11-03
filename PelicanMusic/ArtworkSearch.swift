@@ -48,18 +48,24 @@ actor ArtworkCatalog {
         let wanted = words(query(title: title, artist: nil))
         guard !wanted.isEmpty else { return nil }
         let artistWords = words(artist ?? "")
-        var best: (ArtworkMatch, Double)?
+        var ranked: [(ArtworkMatch, Double)] = []
         for match in matches where match.artworkUrl100 != nil {
             let actual = words(match.trackName)
-            let overlap = Double(wanted.intersection(actual).count) / Double(max(max(wanted.count, actual.count), 1))
+            var overlap = Double(wanted.intersection(actual).count) / Double(max(max(wanted.count, actual.count), 1))
+            if artistWords.isEmpty {
+                let combined = actual.union(words(match.artistName))
+                let combinedOverlap = Double(wanted.intersection(combined).count) / Double(max(max(wanted.count, combined.count), 1))
+                overlap = max(overlap, combinedOverlap)
+            }
             guard overlap >= 0.75 else { continue }
             if !artistWords.isEmpty {
                 let candidateArtist = words(match.artistName)
                 guard Double(artistWords.intersection(candidateArtist).count) / Double(max(artistWords.count, 1)) >= 0.5 else { continue }
             } else if overlap < 1 { continue }
-            if best == nil || overlap > best!.1 { best = (match, overlap) }
+            ranked.append((match, overlap))
         }
-        return best?.0
+        if artistWords.isEmpty, Set(ranked.map { words($0.0.artistName).sorted().joined(separator: " ") }).count > 1 { return nil }
+        return ranked.max(by: { $0.1 < $1.1 })?.0
     }
 }
 

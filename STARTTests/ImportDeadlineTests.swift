@@ -38,6 +38,8 @@ final class ImportDeadlineTests: XCTestCase {
             ArtworkMatch(trackId: 3, trackName: "Horizonte", artistName: "Ana", collectionName: "Certo", artworkUrl100: URL(string: "https://example.com/c.jpg"))
         ]
         XCTAssertEqual(ArtworkCatalog.best(candidates, title: "Horizonte (youtube).mp3", artist: "Ana")?.trackId, 3)
+        XCTAssertEqual(ArtworkCatalog.best(candidates, title: "Ana - Horizonte", artist: nil)?.trackId, 3)
+        XCTAssertNil(ArtworkCatalog.best(candidates, title: "Horizonte", artist: nil), "Different artists with the same title must not be guessed automatically")
         XCTAssertNil(ArtworkCatalog.best(candidates, title: "Set desconhecido de duas horas", artist: nil))
     }
 }
