@@ -15,6 +15,10 @@ jobs:
         run: brew install xcodegen
       - name: Gerar projeto Xcode
         run: xcodegen generate
+      - name: Testar regressões de áudio e importação
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c 'import sys,json; d=json.load(sys.stdin); print(next(v["udid"] for devices in d["devices"].values() for v in devices if "iPhone" in v["name"]))')
+          xcodebuild -project PelicanMusic.xcodeproj -scheme PelicanMusic -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE_ID" -derivedDataPath build-tests CODE_SIGNING_ALLOWED=NO test
       - name: Compilar para iPhone sem assinatura
         run: >-
           xcodebuild -project PelicanMusic.xcodeproj

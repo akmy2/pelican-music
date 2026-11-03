@@ -20,3 +20,13 @@ targets:
         CODE_SIGN_STYLE: Automatic
     scheme:
       gatherCoverageData: false
+      testTargets: [STARTTests]
+  STARTTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [STARTTests]
+    dependencies:
+      - target: PelicanMusic
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES

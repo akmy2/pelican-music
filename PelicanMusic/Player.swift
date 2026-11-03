@@ -10,7 +10,7 @@ struct Track: Codable, Identifiable, Equatable {
     var file: String
 }
 
-final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
+final class Player: NSObject, ObservableObject {
     @Published var tracks: [Track] = []
     @Published var current: Track?
     @Published var playing = false
@@ -19,7 +19,12 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var error: String?
     @Published var importing = false
     @Published var importStatus: String?
-    private var audio: AVAudioPlayer?
+    private var audio: AVPlayer?
+    private var itemStatus: NSKeyValueObservation?
+    private var playbackStatus: NSKeyValueObservation?
+    private var finishObserver: NSObjectProtocol?
+    private var failureObserver: NSObjectProtocol?
+    private var playTask: Task<Void, Never>?
     private var timer: Timer?
     private var resumeAfterInterruption = false
     private let root: URL
@@ -48,7 +53,8 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(routeChanged), name: AVAudioSession.routeChangeNotification, object: nil)
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             guard let self else { return }
-            self.elapsed = self.audio?.currentTime ?? 0
+            let seconds = self.audio?.currentTime().seconds ?? 0
+            self.elapsed = seconds.isFinite ? max(0, seconds) : 0
         }
     }
 
@@ -58,7 +64,7 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
         importing = true
         importStatus = "Preparando \(urls.count) arquivo(s)…"
         let directory = root
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task.detached(priority: .userInitiated) { [weak self] in
             var added: [Track] = []
             var failures: [String] = []
             for url in urls {
@@ -77,14 +83,16 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
                     }
                     if let coordinationError { throw coordinationError }
                     if let copyError { throw copyError }
-                    let probe = try AVAudioPlayer(contentsOf: destination)
-                    guard probe.duration > 0 else {
+                    let probe = AVURLAsset(url: destination)
+                    let playable = try await probe.load(.isPlayable)
+                    let audioTracks = try await probe.loadTracks(withMediaType: .audio)
+                    guard playable, !audioTracks.isEmpty else {
                         throw NSError(domain: "START.Import", code: 1, userInfo: [NSLocalizedDescriptionKey: "Arquivo vazio ou sem áudio reproduzível."])
                     }
                     added.append(Track(id: id, title: url.deletingPathExtension().lastPathComponent, file: filename))
                 } catch {
                     try? FileManager.default.removeItem(at: destination)
-                    failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+                    failures.append("\(url.lastPathComponent): \(Self.describeFileError(error))")
                 }
             }
             let importedTracks = added
@@ -96,7 +104,7 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 self.importing = false
                 self.importStatus = "\(importedTracks.count) música(s) importada(s)" + (importFailures.isEmpty ? "." : "; \(importFailures.count) arquivo(s) recusado(s).")
                 if !importFailures.isEmpty {
-                    self.error = importFailures.joined(separator: "\n\n") + "\n\nUse arquivos de áudio reais (MP3, M4A, WAV ou AAC). Downloads protegidos do Spotify e links não são arquivos importáveis."
+                    self.error = importFailures.joined(separator: "\n\n") + "\n\nOs demais arquivos foram preservados. Confira se o download terminou e se o arquivo abre em outro player. A extensão .mp3, sozinha, não garante o formato do conteúdo."
                 }
             }
         }
@@ -105,7 +113,7 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func remove(_ offsets: IndexSet) {
         for index in offsets {
             let track = tracks[index]
-            if current?.id == track.id { pause(); audio = nil; current = nil; duration = 0; elapsed = 0; MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
+            if current?.id == track.id { playTask?.cancel(); pause(); clearItem(); audio = nil; current = nil; duration = 0; elapsed = 0; MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
             do { try FileManager.default.removeItem(at: root.appendingPathComponent(track.file)) }
             catch { self.error = error.localizedDescription }
         }
@@ -119,31 +127,93 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     func play(_ track: Track) {
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.allowAirPlay])
-            try session.setActive(true)
-            let next = try AVAudioPlayer(contentsOf: root.appendingPathComponent(track.file))
-            next.delegate = self
-            guard next.prepareToPlay(), next.play() else { throw NSError(domain: "Player", code: 1, userInfo: [NSLocalizedDescriptionKey: "Não foi possível reproduzir o arquivo."]) }
-            audio?.stop()
-            audio = next; current = track; duration = next.duration; elapsed = 0; playing = true
-            nowPlaying()
-        } catch { self.error = error.localizedDescription }
+        playTask?.cancel()
+        let url = root.appendingPathComponent(track.file)
+        playTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let asset = AVURLAsset(url: url)
+                let playable = try await asset.load(.isPlayable)
+                let length = try await asset.load(.duration).seconds
+                guard !Task.isCancelled else { return }
+                guard playable else { throw NSError(domain: "START.Audio", code: 1, userInfo: [NSLocalizedDescriptionKey: "O iOS não consegue reproduzir este formato."]) }
+                // Playback already supports AirPlay. Explicit allowAirPlay is for playAndRecord.
+                do { try self.activateSession() }
+                catch { self.error = "Não foi possível ativar a saída de áudio. \(error.localizedDescription)"; return }
+                self.audio?.pause()
+                self.clearItem()
+                let item = AVPlayerItem(asset: asset)
+                let next = AVPlayer(playerItem: item)
+                self.audio = next
+                self.current = track
+                self.duration = length.isFinite ? max(0, length) : 0
+                self.elapsed = 0
+                self.playing = false
+                self.itemStatus = item.observe(\.status, options: [.initial, .new]) { [weak self, weak item] _, _ in
+                    DispatchQueue.main.async {
+                        guard let self, let item, self.audio?.currentItem === item else { return }
+                        if item.status == .failed { self.pause(); self.error = "\(track.title): \(Self.describeFileError(item.error))" }
+                    }
+                }
+                self.playbackStatus = next.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self, weak next] _, _ in
+                    DispatchQueue.main.async {
+                        guard let self, let next, self.audio === next else { return }
+                        self.playing = next.timeControlStatus == .playing
+                        self.nowPlaying()
+                    }
+                }
+                self.finishObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in self?.next() }
+                self.failureObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] notification in
+                    self?.pause()
+                    self?.error = "\(track.title): \(Self.describeFileError(notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error))"
+                }
+                next.play()
+                self.nowPlaying()
+            } catch {
+                if !Task.isCancelled { self.error = "\(track.title): \(Self.describeFileError(error))" }
+            }
+        }
+    }
+
+    private func activateSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .default, options: [])
+        try session.setActive(true)
+    }
+    private func clearItem() {
+        itemStatus = nil; playbackStatus = nil
+        if let finishObserver { NotificationCenter.default.removeObserver(finishObserver) }
+        if let failureObserver { NotificationCenter.default.removeObserver(failureObserver) }
+        finishObserver = nil; failureObserver = nil
+    }
+    private static func describeFileError(_ error: Error?) -> String {
+        guard let error else { return "A leitura do áudio falhou. Tente baixar o arquivo novamente." }
+        let issue = error as NSError
+        if issue.domain == NSOSStatusErrorDomain {
+            return "Não foi possível decodificar o conteúdo de áudio (código \(issue.code)). O formato pode ser incompatível, o arquivo pode estar incompleto ou sua extensão pode não corresponder ao conteúdo."
+        }
+        if issue.domain == AVFoundationErrorDomain {
+            return "O iOS não conseguiu abrir o áudio (código \(issue.code)). Confirme o download e teste o arquivo em outro player."
+        }
+        return issue.localizedDescription
     }
 
     func resume() {
         guard let audio else { if let first = tracks.first { play(first) }; return }
-        do { try AVAudioSession.sharedInstance().setActive(true); playing = audio.play(); nowPlaying() }
+        do { try activateSession(); audio.play(); nowPlaying() }
         catch { self.error = error.localizedDescription }
     }
-    func pause() { audio?.pause(); playing = false; nowPlaying() }
+    func pause() { playTask?.cancel(); audio?.pause(); playing = false; nowPlaying() }
     func releaseAudio() {
         pause()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
     func toggle() { playing ? pause() : resume() }
-    func seek(_ value: Double) { audio?.currentTime = min(max(value, 0), duration); elapsed = audio?.currentTime ?? 0; nowPlaying() }
+    func seek(_ value: Double) {
+        elapsed = min(max(value, 0), duration)
+        audio?.seek(to: CMTime(seconds: elapsed, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+        nowPlaying()
+    }
     func next() {
         guard !tracks.isEmpty else { return }
         let index = tracks.firstIndex(where: { $0.id == current?.id }) ?? -1
@@ -155,16 +225,13 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let index = tracks.firstIndex(where: { $0.id == current?.id }) ?? 0
         play(tracks[(index - 1 + tracks.count) % tracks.count])
     }
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        if flag { next() } else { pause(); error = "A reprodução foi interrompida por um erro." }
-    }
     private func nowPlaying() {
         guard let current else { return }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = [
             MPMediaItemPropertyTitle: current.title,
             MPMediaItemPropertyArtist: "Biblioteca pessoal",
             MPMediaItemPropertyPlaybackDuration: duration,
-            MPNowPlayingInfoPropertyElapsedPlaybackTime: audio?.currentTime ?? 0,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: elapsed,
             MPNowPlayingInfoPropertyPlaybackRate: playing ? 1.0 : 0.0
         ]
     }
