@@ -14,7 +14,9 @@ Primeira versão nativa em SwiftUI, para iPhone/iPad com iOS 17 ou superior.
 
 ## Limites desta entrega
 
-O código foi criado no Windows. **Ainda não foi compilado com Xcode nem executado em iPhone.** O primeiro build na nuvem e a verificação no aparelho são necessários antes de considerar esta versão validada.
+O código foi criado no Windows e **compilado com sucesso para iPhone pelo Xcode no GitHub Actions em 03/11/2026**. O IPA foi baixado e seu executável Mach-O, identificador e configuração de áudio em segundo plano foram conferidos. **Ainda não foi executado em um iPhone**; assinatura, instalação, reprodução e conexão Spotify precisam ser validadas no aparelho.
+
+Build inicial: https://github.com/akmy2/pelican-music/actions/runs/41676179108
 
 SoundCloud e YouTube têm apenas atalhos externos nesta versão. Não há login SoundCloud, streaming SoundCloud, busca remota, sincronização de playlists, player YouTube incorporado nem fila misturando serviços. A interface informa essas limitações. Não são conexões simuladas.
 
