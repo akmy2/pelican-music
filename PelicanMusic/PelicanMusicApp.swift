@@ -6,7 +6,7 @@ import AVKit
     @StateObject private var player = Player()
     @StateObject private var spotify = Spotify()
     var body: some Scene {
-        WindowGroup { ContentView().environmentObject(player).environmentObject(spotify).preferredColorScheme(.dark) }
+        WindowGroup { ContentView().environmentObject(player).environmentObject(spotify).preferredColorScheme(.dark).environment(\.locale, Locale(identifier: "pt_BR")) }
     }
 }
 
@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var importing = false
     @State private var spotifyLink = ""
     @State private var selectedTab = 0
+    @State private var expandedPlayer = false
     private let lime = Color(red: 0.77, green: 1, blue: 0.08)
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -23,33 +24,38 @@ struct ContentView: View {
                 List {
                     Section {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("START").font(.system(size: 54, weight: .black, design: .rounded)).italic()
-                            Text("Sua música, no seu ritmo.").font(.title3).foregroundStyle(.secondary)
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("START").font(.system(size: 48, weight: .black, design: .rounded)).italic().tracking(-2)
+                                Image(systemName: "play.fill").font(.title3).foregroundStyle(lime)
+                                Spacer()
+                            }
+                            Text("Sua música, no seu ritmo.").font(.subheadline).foregroundStyle(.secondary)
                             Button { importing = true } label: {
                                 Label("Importar músicas", systemImage: "plus").font(.headline)
                                     .frame(maxWidth: .infinity).padding(.vertical, 14)
                             }.buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(lime).foregroundStyle(.black).disabled(player.importing).padding(.top, 12)
                             if player.importing { ProgressView("Importando arquivos…") }
-                            if let status = player.importStatus { Text(status).font(.footnote).foregroundStyle(.secondary) }
+                            if let status = player.importStatus { Label(status, systemImage: "tray.and.arrow.down").font(.caption).foregroundStyle(.secondary).padding(.top, 4) }
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
                                     Button { selectedTab = 1 } label: { Label("Arquivos", systemImage: "folder") }
-                                    Link("Spotify", destination: URL(string: "https://open.spotify.com")!)
-                                    Link("SoundCloud", destination: URL(string: "https://soundcloud.com")!)
-                                    Link("YouTube", destination: URL(string: "https://www.youtube.com")!)
+                                    Link(destination: URL(string: "https://open.spotify.com")!) { Label("Spotify", systemImage: "dot.radiowaves.left.and.right").foregroundStyle(.green) }
+                                    Link(destination: URL(string: "https://soundcloud.com")!) { Label("SoundCloud", systemImage: "cloud.fill").foregroundStyle(.orange) }
+                                    Link(destination: URL(string: "https://www.youtube.com")!) { Label("YouTube", systemImage: "play.rectangle.fill").foregroundStyle(.red) }
                                 }.font(.caption.weight(.medium)).buttonStyle(.bordered).buttonBorderShape(.capsule).tint(.white)
                             }.padding(.vertical, 12)
                             ZStack(alignment: .bottomLeading) {
-                                RoundedRectangle(cornerRadius: 24).fill(LinearGradient(colors: [Color(red: 0.27, green: 0.12, blue: 0.23), .orange, Color(red: 0.18, green: 0.08, blue: 0.22)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                Circle().fill(.orange.opacity(0.6)).frame(width: 120, height: 120).offset(x: 180, y: -45)
+                                LandscapeArt()
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text("Seu próximo play").font(.title.bold())
-                                    Text("Explore sua biblioteca").foregroundStyle(.white.opacity(0.85))
+                                    Text("SEU MOMENTO").font(.caption2.weight(.bold)).tracking(2).foregroundStyle(.white.opacity(0.75))
+                                    Text("Seu próximo play").font(.title2.bold())
+                                    Text("Explore sua biblioteca").font(.subheadline).foregroundStyle(.white.opacity(0.85))
                                     Button { player.resume() } label: {
                                         Image(systemName: "play.fill").foregroundStyle(.black).padding(16).background(lime, in: Circle())
                                     }.buttonStyle(.plain).disabled(player.tracks.isEmpty).padding(.top, 12)
                                 }.padding(24)
-                            }.frame(height: 210).clipped()
+                            }.frame(height: 210).clipShape(RoundedRectangle(cornerRadius: 24))
+                                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(.white.opacity(0.08)))
                         }.padding(.vertical, 8)
                     }.listRowBackground(Color.clear).listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     Section("Sua biblioteca · \(player.tracks.count) faixas") {
@@ -58,14 +64,8 @@ struct ContentView: View {
                         }
                         ForEach(player.tracks) { track in
                             Button { player.play(track) } label: {
-                                HStack(spacing: 14) {
-                                    Image(systemName: player.current?.id == track.id && player.playing ? "waveform" : "music.note")
-                                        .foregroundStyle(.mint).frame(width: 38, height: 38).background(.mint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-                                    VStack(alignment: .leading) { Text(track.title).foregroundStyle(.primary); Text("Arquivo local · Offline").font(.caption).foregroundStyle(.secondary) }
-                                    Spacer()
-                                    Image(systemName: "play.fill").foregroundStyle(.mint)
-                                }
-                            }
+                                MusicRow(track: track, active: player.current?.id == track.id && player.playing)
+                            }.buttonStyle(.plain).listRowBackground(StartStyle.surface).listRowSeparatorTint(.white.opacity(0.06))
                         }.onDelete(perform: player.remove)
                     }
                 }.scrollContentBackground(.hidden).background(Color(red: 0.045, green: 0.045, blue: 0.055))
@@ -86,11 +86,11 @@ struct ContentView: View {
                         }
                         ForEach(player.tracks) { track in
                             Button { player.play(track) } label: {
-                                Label(track.title, systemImage: player.current?.id == track.id ? "waveform" : "music.note").foregroundStyle(.primary)
-                            }
+                                MusicRow(track: track, active: player.current?.id == track.id && player.playing)
+                            }.buttonStyle(.plain).listRowBackground(StartStyle.surface).listRowSeparatorTint(.white.opacity(0.06))
                         }.onDelete(perform: player.remove)
                     }
-                }.navigationTitle("Biblioteca").toolbar { EditButton() }
+                }.scrollContentBackground(.hidden).background(StartStyle.background).navigationTitle("Biblioteca").toolbar { EditButton() }
                     .safeAreaInset(edge: .bottom) { if player.current != nil { localControls } }
             }.tabItem { Label("Biblioteca", systemImage: "music.note.list") }.tag(1)
             NavigationStack {
@@ -139,7 +139,7 @@ struct ContentView: View {
                         Text("Nesta versão, os links abrem no YouTube. Player incorporado ainda não implementado. A API oficial não permite áudio com o player oculto.").font(.footnote).foregroundStyle(.secondary)
                         Link("Abrir YouTube", destination: URL(string: "https://www.youtube.com")!)
                     }
-                }.navigationTitle("Conexões")
+                }.scrollContentBackground(.hidden).background(StartStyle.background).navigationTitle("Conexões")
             }.tabItem { Label("Conexões", systemImage: "link") }.tag(2)
         }.tint(lime)
         .sheet(isPresented: $importing) {
@@ -148,6 +148,7 @@ struct ContentView: View {
                 player.importFiles(urls)
             }, onCancel: { importing = false })
         }
+        .sheet(isPresented: $expandedPlayer) { expandedControls.presentationDragIndicator(.visible) }
         .alert("Não foi possível concluir", isPresented: Binding(get: { player.error != nil }, set: { if !$0 { player.error = nil } })) {
             Button("OK") { player.error = nil }
         } message: { Text(player.error ?? "") }
@@ -157,8 +158,44 @@ struct ContentView: View {
         Task { await spotify.command(action, link: link) }
     }
     private var localControls: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Button { expandedPlayer = true } label: {
+                    HStack(spacing: 12) {
+                        TrackArtwork(title: player.current?.title ?? "", active: player.playing).frame(width: 44, height: 44)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(player.current?.title ?? "").font(.subheadline.weight(.semibold)).foregroundStyle(.white).lineLimit(1)
+                            Text("\(player.playing ? "Tocando agora" : "Pausado") · Toque para ampliar").font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityLabel("Abrir player completo")
+                Button { player.toggle() } label: {
+                    Image(systemName: player.playing ? "pause.fill" : "play.fill").font(.title3)
+                        .foregroundStyle(.black).frame(width: 42, height: 42).background(lime, in: Circle())
+                }.accessibilityLabel(player.playing ? "Pausar" : "Reproduzir")
+                Button { player.next() } label: { Image(systemName: "forward.end.fill").foregroundStyle(.white).frame(width: 32, height: 44) }.accessibilityLabel("Próxima música")
+            }.padding(12)
+            ProgressView(value: min(max(player.elapsed, 0), max(player.duration, 1)), total: max(player.duration, 1)).tint(lime).padding(.horizontal, 12)
+        }.padding(.bottom, 8).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(.white.opacity(0.08)))
+            .padding(.horizontal, 12).padding(.bottom, 8)
+    }
+    private var expandedControls: some View {
+        ScrollView {
+        VStack(spacing: 24) {
+            HStack {
+                Button { expandedPlayer = false } label: { Image(systemName: "chevron.down").frame(width: 44, height: 44) }.accessibilityLabel("Fechar player")
+                Spacer()
+                Text("TOCANDO NO START").font(.caption.weight(.bold)).tracking(2)
+                Spacer()
+                AirPlayButton().frame(width: 44, height: 44)
+            }.foregroundStyle(.white)
+            TrackArtwork(title: player.current?.title ?? "", active: player.playing)
+                .aspectRatio(1, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 28))
+                .shadow(color: .orange.opacity(0.15), radius: 30, y: 12)
         VStack(spacing: 10) {
-            Text(player.current?.title ?? "").font(.headline).lineLimit(1)
+            Text(player.current?.title ?? "").font(.title2.bold()).lineLimit(3).frame(maxWidth: .infinity, alignment: .leading)
+            Text("Biblioteca pessoal · Arquivo local").font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
             Slider(value: Binding(get: { player.elapsed }, set: { player.seek($0) }), in: 0...max(player.duration, 1))
             HStack {
                 Text(clock(player.elapsed)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -167,10 +204,12 @@ struct ContentView: View {
                 Button { player.toggle() } label: { Image(systemName: player.playing ? "pause.circle.fill" : "play.circle.fill").font(.system(size: 44)) }.padding(.horizontal, 18)
                 Button { player.next() } label: { Image(systemName: "forward.end.fill") }
                 Spacer()
-                AirPlayButton().frame(width: 28, height: 28)
                 Text(clock(player.duration)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }.buttonStyle(.plain)
-        }.padding().background(.ultraThinMaterial)
+        }
+            Label("Disponível offline", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(lime)
+        }.padding(24).padding(.top, 10)
+        }.background(LinearGradient(colors: [Color(red: 0.16, green: 0.1, blue: 0.18), StartStyle.background], startPoint: .top, endPoint: .bottom)).tint(lime)
     }
     private func clock(_ seconds: Double) -> String {
         let seconds = Int(max(0, seconds)); return String(format: "%d:%02d", seconds / 60, seconds % 60)

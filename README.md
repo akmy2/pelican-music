@@ -22,6 +22,8 @@ SoundCloud e YouTube têm apenas atalhos externos nesta versão. Não há login 
 
 ## Atualização 0.3.0
 
+Os dois testes de regressão passaram no simulador iOS, sem falhas, no build https://github.com/akmy2/pelican-music/actions/runs/41679132419 . O IPA 0.3.0 foi compilado e seu pacote verificado. A validação dos arquivos específicos do usuário e da reprodução no iPhone continua pendente.
+
 - Removida a opção explícita `allowAirPlay` da categoria `playback`, que não precisa dessa opção para usar AirPlay. A configuração anterior podia produzir erro de parâmetro `-50`.
 - Motor local migrado de AVAudioPlayer para AVPlayer; importação passa a verificar AVURLAsset e presença de uma trilha de áudio.
 - Erros de formato/decodificação passam a explicar o problema em português e preservar os outros arquivos.
@@ -30,6 +32,10 @@ SoundCloud e YouTube têm apenas atalhos externos nesta versão. Não há login 
 O arquivo específico recusado na captura do usuário ainda precisa ser testado: não foi fornecido seu conteúdo. A mudança não recupera downloads incompletos, arquivos protegidos nem converte formatos incompatíveis.
 
 Não há leitura automática da música tocada em Spotify/SoundCloud sem integração. O iOS não oferece uma API pública para ler os metadados de reprodução de outros aplicativos por meio do MPNowPlayingInfoCenter. Os links abrem os aplicativos de origem; login e comandos Spotify integrados continuam dependendo da autorização do serviço.
+
+## Atualização visual 0.3.1
+
+Dashboard com paisagem vetorial, capas ilustrativas geradas pelo próprio layout (não são capas oficiais das músicas), faixas com título limitado a duas linhas, player compacto e tela de reprodução ampliada. Mantidas as correções de áudio 0.3.0. Cores unificadas e controles localizados em português.
 
 Spotify usa o dispositivo já ativo: abra o Spotify e reproduza uma música antes de usar os comandos. O áudio e seus controles de tela bloqueada ficam sob responsabilidade do Spotify. Não há SDK App Remote nesta versão nem ativação automática de dispositivo. O controle via Web API exige rede, Premium e permissões de acesso do app. O app não baixa arquivos do Spotify. Ao iniciar áudio local, o iOS pode interromper outro player; ao enviar play ao Spotify, o app libera a sessão local.
 
