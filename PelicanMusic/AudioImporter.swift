@@ -4,6 +4,7 @@ import UIKit
 
 // Copy mode asks the provider to materialize cloud files before returning URLs.
 struct AudioImporter: UIViewControllerRepresentable {
+    var folders = false
     var onSelection: ([URL]) -> Void
     var onCancel: () -> Void
 
@@ -11,7 +12,7 @@ struct AudioImporter: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         // Some providers advertise MP3/M4A as generic data rather than UTType.audio.
         // Validate the actual file after copying instead of hiding those documents.
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: folders ? [.folder] : [.item], asCopy: !folders)
         picker.allowsMultipleSelection = true
         picker.delegate = context.coordinator
         return picker

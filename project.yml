@@ -12,6 +12,9 @@ targets:
     type: application
     platform: iOS
     sources: [PelicanMusic]
+    dependencies:
+      - target: STARTWidget
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pelican.music
@@ -30,3 +33,14 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+  STARTWidget:
+    type: app-extension
+    platform: iOS
+    sources: [STARTWidget]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pelican.music.widget
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: STARTWidget/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES

@@ -25,7 +25,7 @@ final class AudioRegressionTests: XCTestCase {
             try file.write(from: buffer)
         }
         try Data("<html>not audio</html>".utf8).write(to: invalid)
-        let player = Player()
+        let player = Player(directory: directory.appendingPathComponent("Library"))
         let previousIDs = Set(player.tracks.map(\.id))
         player.importFiles([valid, invalid])
         let deadline = Date().addingTimeInterval(15)
@@ -37,7 +37,7 @@ final class AudioRegressionTests: XCTestCase {
         XCTAssertNotNil(player.error)
         XCTAssertTrue(player.error?.contains("broken.mp3") == true)
         XCTAssertTrue(player.importStatus?.contains("1 música(s) importada(s)") == true)
-        let reloaded = Player()
+        let reloaded = Player(directory: directory.appendingPathComponent("Library"))
         XCTAssertTrue(reloaded.tracks.contains(where: { $0.id == added.first?.id }))
         let indices = IndexSet(player.tracks.indices.filter { !previousIDs.contains(player.tracks[$0].id) })
         player.remove(indices)
