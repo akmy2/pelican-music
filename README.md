@@ -6,6 +6,8 @@ As 20 melhorias solicitadas estão descritas no [guia START 0.4.0](START-0.4.0.m
 
 O widget é uma extensão separada dentro do IPA. O instalador precisa assinar e preservar as extensões. Ele abre o app por URL para executar os atalhos e não depende de App Groups. A configuração de backup não inclui áudios ou credenciais.
 
+Build da versão 0.4.0: https://github.com/akmy2/pelican-music/actions/runs/41688781032 . Compilação para iPhone e sete testes aprovados, incluindo reprodução real com áudio de teste, crossfade, retomada, migração, importação por pasta, duplicatas e backup. O pacote IPA foi conferido com o widget incluído. Assinatura, compartilhamento, widget, Atalhos e comportamento em segundo plano devem ser validados no iPhone físico.
+
 Primeira versão nativa em SwiftUI, para iPhone/iPad com iOS 17 ou superior.
 
 ## O que está implementado

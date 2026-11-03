@@ -1,5 +1,7 @@
 # START 0.4.0 — guia das 20 melhorias
 
+Compilação para iPhone e sete testes automatizados aprovados no simulador: https://github.com/akmy2/pelican-music/actions/runs/41688781032 . O IPA foi baixado e verificado, incluindo o executável do widget, os tipos de documentos de áudio, a versão e os metadados de App Intents. A validação com a assinatura e o iPhone do usuário ainda é necessária.
+
 Atualize o app com o mesmo identificador e assinatura da instalação anterior para preservar seus arquivos. Não desinstale a versão anterior antes de fazer backup dos áudios pelo app Arquivos.
 
 | Melhoria | Onde usar |
