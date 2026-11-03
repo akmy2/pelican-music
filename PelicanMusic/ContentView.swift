@@ -18,16 +18,13 @@ struct ContentView: View {
                             Button { settings = true } label: { Image(systemName: "slider.horizontal.3") }.accessibilityLabel("Ajustes")
                         }
                     }
-            }.tabItem { Label("Início", systemImage: "house.fill") }.tag(0)
+            }.safeAreaInset(edge: .bottom, spacing: 0) { playerBar }.tabItem { Label("Início", systemImage: "house.fill") }.tag(0)
             NavigationStack { LibraryView(importAction: { showImport(false) }, folderAction: { showImport(true) }) }
-                .tabItem { Label("Biblioteca", systemImage: "music.note.list") }.tag(1)
-            NavigationStack { CollectionsView() }.tabItem { Label("Playlists", systemImage: "rectangle.stack") }.tag(2)
-            NavigationStack { ConnectionsView() }.tabItem { Label("Conexões", systemImage: "link") }.tag(3)
+                .safeAreaInset(edge: .bottom, spacing: 0) { playerBar }.tabItem { Label("Biblioteca", systemImage: "music.note.list") }.tag(1)
+            NavigationStack { CollectionsView() }.safeAreaInset(edge: .bottom, spacing: 0) { playerBar }.tabItem { Label("Playlists", systemImage: "rectangle.stack") }.tag(2)
+            NavigationStack { ConnectionsView() }.safeAreaInset(edge: .bottom, spacing: 0) { playerBar }.tabItem { Label("Conexões", systemImage: "link") }.tag(3)
         }
         .tint(player.state.settings.color)
-        .overlay(alignment: .bottom) {
-            if player.current != nil { MiniPlayer { expanded = true }.padding(.bottom, 65) }
-        }
         .sheet(isPresented: $importing) {
             AudioImporter(folders: folder, onSelection: { urls in importing = false; player.importFiles(urls) }, onCancel: { importing = false })
         }
@@ -51,6 +48,9 @@ struct ContentView: View {
         } message: { Text(player.error ?? "") }
     }
     private func showImport(_ isFolder: Bool) { folder = isFolder; importing = true }
+    @ViewBuilder private var playerBar: some View {
+        if player.current != nil { MiniPlayer { expanded = true }.padding(.bottom, 8) }
+    }
 }
 
 struct HomeView: View {

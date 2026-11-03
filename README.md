@@ -1,5 +1,11 @@
 # START — iOS pessoal
 
+## Versão 0.4.0
+
+As 20 melhorias solicitadas estão descritas no [guia START 0.4.0](START-0.4.0.md): importação de pastas e duplicatas por conteúdo, metadados/capas, busca, favoritos, playlists, fila, aleatório/repetição, crossfade, temporizador, personalização, compartilhamento de arquivos, edição de informações, histórico, retomada, ordenação, armazenamento, backup/restauração, modo carro, widget e App Shortcuts.
+
+O widget é uma extensão separada dentro do IPA. O instalador precisa assinar e preservar as extensões. Ele abre o app por URL para executar os atalhos e não depende de App Groups. A configuração de backup não inclui áudios ou credenciais.
+
 Primeira versão nativa em SwiftUI, para iPhone/iPad com iOS 17 ou superior.
 
 ## O que está implementado
