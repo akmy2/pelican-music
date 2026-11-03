@@ -1,5 +1,9 @@
 # START — iOS pessoal
 
+## Versão 0.4.1
+
+Correção de importações presas em Preparando/Lendo, salvamento incremental, limites de espera, cancelamento e capas automáticas pela web. Veja o [guia START 0.4.1](START-0.4.1.md). A busca de capas usa título/artista no catálogo público do iTunes; não envia o áudio e pode ser desativada nos ajustes.
+
 ## Versão 0.4.0
 
 As 20 melhorias solicitadas estão descritas no [guia START 0.4.0](START-0.4.0.md): importação de pastas e duplicatas por conteúdo, metadados/capas, busca, favoritos, playlists, fila, aleatório/repetição, crossfade, temporizador, personalização, compartilhamento de arquivos, edição de informações, histórico, retomada, ordenação, armazenamento, backup/restauração, modo carro, widget e App Shortcuts.

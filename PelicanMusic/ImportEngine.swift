@@ -4,6 +4,14 @@ import CryptoKit
 import UIKit
 
 enum AudioImport {
+    static func blocking<Value>(_ operation: @escaping @Sendable () throws -> Value) async throws -> Value {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do { continuation.resume(returning: try operation()) }
+                catch { continuation.resume(throwing: error) }
+            }
+        }
+    }
     static func hash(_ url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
@@ -115,7 +123,7 @@ extension Player {
                 guard !Task.isCancelled else { return }
                 await report("Examinando: \(url.lastPathComponent)")
                 do {
-                    let found = try await ImportDeadline.run(seconds: 20, stage: "abertura de \(url.lastPathComponent)") { try AudioImport.inputs(url) }
+                    let found = try await ImportDeadline.run(seconds: 20, stage: "abertura de \(url.lastPathComponent)") { try await AudioImport.blocking { try AudioImport.inputs(url) } }
                     inputs.append(contentsOf: found)
                 } catch is CancellationError { return }
                 catch { failed.append(ImportFailure(name: url.lastPathComponent, message: error.localizedDescription, retryURL: url)) }
@@ -141,11 +149,14 @@ extension Player {
                             }
                         }
                         await report("\(number) · Copiando: \(source.lastPathComponent)")
-                        var coordinationError: NSError?, copyError: Error?
-                        NSFileCoordinator().coordinate(readingItemAt: source, options: [], error: &coordinationError) { readable in
-                            do { try Task.checkCancellation(); try FileManager.default.copyItem(at: readable, to: destination) } catch { copyError = error }
+                        try Task.checkCancellation()
+                        try await AudioImport.blocking {
+                            var coordinationError: NSError?, copyError: Error?
+                            NSFileCoordinator().coordinate(readingItemAt: source, options: [], error: &coordinationError) { readable in
+                                do { try FileManager.default.copyItem(at: readable, to: destination) } catch { copyError = error }
+                            }
+                            if let coordinationError { throw coordinationError }; if let copyError { throw copyError }
                         }
-                        if let coordinationError { throw coordinationError }; if let copyError { throw copyError }
                         try Task.checkCancellation()
                         await report("\(number) · Verificando conteúdo: \(source.lastPathComponent)")
                         let hash = try AudioImport.hash(destination)

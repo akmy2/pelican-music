@@ -2,6 +2,24 @@ import XCTest
 @testable import PelicanMusic
 
 final class ImportDeadlineTests: XCTestCase {
+    func testSeveralBlockingProvidersCannotStarveImportDeadlines() async throws {
+        let start = Date()
+        await withTaskGroup(of: Bool.self) { group in
+            for _ in 0..<12 {
+                group.addTask {
+                    do {
+                        let _: Int = try await ImportDeadline.run(seconds: 0.05, stage: "provedor bloqueado") {
+                            try await AudioImport.blocking { Thread.sleep(forTimeInterval: 1.5); return 1 }
+                        }
+                        return false
+                    } catch { return error is ImportTimeout }
+                }
+            }
+            for await timedOut in group { XCTAssertTrue(timedOut) }
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(start), 1)
+        try await Task.sleep(nanoseconds: 1_600_000_000)
+    }
     func testDeadlineReturnsWithoutWaitingForUncooperativeOperation() async throws {
         let start = Date()
         do {
