@@ -37,6 +37,8 @@ Não há leitura automática da música tocada em Spotify/SoundCloud sem integra
 
 Dashboard com paisagem vetorial, capas ilustrativas geradas pelo próprio layout (não são capas oficiais das músicas), faixas com título limitado a duas linhas, player compacto e tela de reprodução ampliada. Mantidas as correções de áudio 0.3.0. Cores unificadas e controles localizados em português.
 
+Compilação, testes de regressão e captura real da dashboard concluídos com sucesso: https://github.com/akmy2/pelican-music/actions/runs/41682415300 . O pacote IPA 0.3.1 foi baixado e verificado. A execução no aparelho físico e o arquivo específico recusado do usuário continuam pendentes de validação.
+
 Spotify usa o dispositivo já ativo: abra o Spotify e reproduza uma música antes de usar os comandos. O áudio e seus controles de tela bloqueada ficam sob responsabilidade do Spotify. Não há SDK App Remote nesta versão nem ativação automática de dispositivo. O controle via Web API exige rede, Premium e permissões de acesso do app. O app não baixa arquivos do Spotify. Ao iniciar áudio local, o iOS pode interromper outro player; ao enviar play ao Spotify, o app libera a sessão local.
 
 ## Gerar IPA usando somente Windows
