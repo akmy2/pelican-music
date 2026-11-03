@@ -69,6 +69,7 @@ final class LibraryTests: XCTestCase {
         try FileManager.default.copyItem(at: audio, to: folder.appendingPathComponent("duplicate.wav"))
         try Data("invalid audio".utf8).write(to: folder.appendingPathComponent("broken.mp3"))
         let player = Player(directory: directory.appendingPathComponent("Library"))
+        player.state.settings.automaticArtwork = false
         player.importFiles([folder])
         let deadline = Date().addingTimeInterval(20)
         while player.importing && Date() < deadline { try await Task.sleep(nanoseconds: 100_000_000) }

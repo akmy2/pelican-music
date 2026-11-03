@@ -26,6 +26,13 @@ struct SettingsView: View {
                 Button("Abrir modo carro", systemImage: "car.fill", action: openCar)
             }
             Section("Biblioteca") {
+                Toggle("Buscar capas automaticamente na web", isOn: Binding(get: { player.state.settings.automaticArtwork != false }, set: { enabled in
+                    player.state.settings.automaticArtwork = enabled
+                    if enabled { player.startAutomaticArtwork(retry: true) } else { player.stopAutomaticArtwork() }
+                }))
+                if let status = player.artworkStatus { Text(status).font(.caption).foregroundStyle(.secondary) }
+                Button("Tentar buscar capas ausentes novamente", systemImage: "photo.badge.magnifyingglass") { player.startAutomaticArtwork(retry: true) }
+                Text("Nome e artista das músicas sem capa são consultados no catálogo público do iTunes. A busca acontece em segundo plano. Resultados incertos não são aplicados e capas existentes são preservadas.").font(.caption).foregroundStyle(.secondary)
                 NavigationLink { StorageView() } label: { Label("Armazenamento", systemImage: "internaldrive") }
                 NavigationLink { TrackCollectionView(title: "Histórico", kind: .history) } label: { Label("Histórico", systemImage: "clock.arrow.circlepath") }
                 Button("Ler metadados ausentes", systemImage: "arrow.triangle.2.circlepath") { player.refreshMissingMetadata() }.disabled(player.importing)
@@ -51,7 +58,7 @@ struct SettingsView: View {
                 Text("Adicione o widget START pela edição da Tela de Início. Ele abre a biblioteca, retoma a reprodução ou inicia favoritos. No app Atalhos, procure START para usar Reproduzir, Próxima música e Tocar playlist. Os atalhos abrem o app para executar o comando.").font(.footnote)
                 Text("Seu instalador precisa preservar e assinar a extensão de widget incluída no IPA para que ela fique disponível.").font(.caption).foregroundStyle(.secondary)
             }
-            Section { Text("START 0.4.0 · Sua música, no seu ritmo.").font(.caption).foregroundStyle(.secondary) }
+            Section { Text("START 0.4.1 · Sua música, no seu ritmo.").font(.caption).foregroundStyle(.secondary) }
         }.navigationTitle("Ajustes")
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Concluir") { dismiss() } } }
             .fileExporter(isPresented: $export, document: document, contentType: .json, defaultFilename: "START-backup-\(Date().formatted(.iso8601.year().month().day()))") { result in

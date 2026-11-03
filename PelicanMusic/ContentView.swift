@@ -25,6 +25,7 @@ struct ContentView: View {
             NavigationStack { ConnectionsView() }.safeAreaInset(edge: .bottom, spacing: 0) { playerBar }.tabItem { Label("Conexões", systemImage: "link") }.tag(3)
         }
         .tint(player.state.settings.color)
+        .task { player.startAutomaticArtwork() }
         .sheet(isPresented: $importing) {
             AudioImporter(folders: folder, onSelection: { urls in importing = false; player.importFiles(urls) }, onCancel: { importing = false })
         }
@@ -155,7 +156,10 @@ struct ImportStatusView: View {
     @EnvironmentObject var player: Player
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if player.importing { ProgressView(value: player.importProgress).tint(player.state.settings.color) }
+            if player.importing {
+                ProgressView(value: player.importProgress).tint(player.state.settings.color)
+                Button("Cancelar importação", role: .destructive) { player.cancelImport() }.font(.caption)
+            }
             if let status = player.importStatus { Text(status).font(.caption).foregroundStyle(.secondary) }
             if !player.importFailures.isEmpty {
                 NavigationLink("Ver \(player.importFailures.count) falha(s) e tentar novamente") { ImportFailuresView() }.font(.caption)

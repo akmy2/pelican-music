@@ -30,6 +30,7 @@ struct MusicSettings: Codable {
     var sort = LibrarySort.newest
     var shuffle = false
     var repeatMode = RepeatMode.all
+    var automaticArtwork: Bool?
 }
 
 struct LibraryState: Codable {

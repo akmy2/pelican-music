@@ -26,6 +26,7 @@ final class AudioRegressionTests: XCTestCase {
         }
         try Data("<html>not audio</html>".utf8).write(to: invalid)
         let player = Player(directory: directory.appendingPathComponent("Library"))
+        player.state.settings.automaticArtwork = false
         let previousIDs = Set(player.tracks.map(\.id))
         player.importFiles([valid, invalid])
         let deadline = Date().addingTimeInterval(15)

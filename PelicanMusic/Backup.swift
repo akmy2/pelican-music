@@ -56,21 +56,40 @@ extension Player {
     func refreshMissingMetadata() {
         guard !importing else { return }
         let originals = tracks.filter { $0.length == nil }
-        importing = true
+        let session = UUID()
+        importSessionID = session; importing = true; importProgress = 0
+        importStatus = "Lendo informações dos arquivos…"
         let directory = root
-        Task.detached { [weak self] in
-            var updates: [Track] = []
-            for track in originals {
-                if var updated = try? await AudioImport.inspect(directory.appendingPathComponent(track.file), originalName: track.title, id: track.id, directory: directory) {
-                    updated.favorite = track.favorite; updated.fingerprint = track.fingerprint
-                    updates.append(updated)
+        importTask = Task.detached { [weak self] in
+            var count = 0
+            for (offset, track) in originals.enumerated() {
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    guard let self, self.importSessionID == session else { return }
+                    self.importStatus = "Informações: \(track.title)"
+                    self.importProgress = Double(offset) / Double(max(originals.count, 1))
+                }
+                let update = try? await ImportDeadline.run(seconds: 15, stage: "informações de \(track.title)") {
+                    var updated = try await AudioImport.inspect(directory.appendingPathComponent(track.file), originalName: track.title, id: track.id, directory: directory)
+                    updated.favorite = track.favorite
+                    updated.fingerprint = track.fingerprint ?? (try? AudioImport.hash(directory.appendingPathComponent(track.file)))
+                    return updated
+                }
+                guard !Task.isCancelled else { return }
+                if let update {
+                    await MainActor.run {
+                        guard let self, self.importSessionID == session, let index = self.tracks.firstIndex(where: { $0.id == track.id }) else { return }
+                        self.tracks[index] = update; self.save()
+                    }
+                    count += 1
                 }
             }
-            let result = updates
-            DispatchQueue.main.async {
-                guard let self else { return }
-                for track in result { if let index = self.tracks.firstIndex(where: { $0.id == track.id }) { self.tracks[index] = track } }
-                self.save(); self.importing = false; self.importStatus = "Informações atualizadas em \(result.count) música(s)."
+            let total = count
+            await MainActor.run {
+                guard let self, self.importSessionID == session else { return }
+                self.importing = false; self.importSessionID = nil; self.importTask = nil
+                self.importStatus = "Informações atualizadas em \(total) música(s)."
+                self.startAutomaticArtwork()
             }
         }
     }

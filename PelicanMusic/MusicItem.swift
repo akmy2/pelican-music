@@ -48,6 +48,7 @@ struct MusicItem: View {
                 Button(track.favorite == true ? "Remover favorito" : "Favoritar", systemImage: "heart") { player.toggleFavorite(track) }
                 Button("Adicionar à playlist", systemImage: "rectangle.stack.badge.plus") { addToPlaylist = true }
                 Button("Editar informações", systemImage: "pencil") { edit = true }
+                if let source = track.artworkSource, let url = URL(string: source) { Link("Ver música no iTunes · Fonte da capa", destination: url) }
                 ShareLink(item: player.fileURL(track)) { Label("Compartilhar áudio", systemImage: "square.and.arrow.up") }
             }
             .sheet(isPresented: $edit) { TrackEditor(track: track) }

@@ -73,6 +73,7 @@ struct NowPlayingView: View {
                     if let deadline = player.sleepDeadline { Text("Parar às \(deadline.formatted(date: .omitted, time: .shortened))").font(.caption).foregroundStyle(.secondary) }
                     if player.loading { ProgressView("Preparando áudio…") }
                     Label("Disponível offline", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(player.state.settings.color)
+                    if let source = player.current?.artworkSource, let url = URL(string: source) { Link("Capa do iTunes · Ver música", destination: url).font(.caption) }
                 }.padding(24)
             }.background(LinearGradient(colors: [Color(red: 0.16, green: 0.10, blue: 0.18), StartStyle.background], startPoint: .top, endPoint: .bottom))
                 .navigationTitle("Tocando no START").navigationBarTitleDisplayMode(.inline)

@@ -17,6 +17,8 @@ struct Track: Codable, Identifiable, Equatable {
     var fingerprint: String?
     var byteCount: Int64?
     var favorite: Bool?
+    var artworkSource: String?
+    var artworkSearchAttempted: Bool?
 }
 
 final class Player: NSObject, ObservableObject {
@@ -31,6 +33,11 @@ final class Player: NSObject, ObservableObject {
     @Published var importStatus: String?
     @Published var importFailures: [ImportFailure] = []
     @Published var importProgress: Double = 0
+    var importSessionID: UUID?
+    var importTask: Task<Void, Never>?
+    var artworkTask: Task<Void, Never>?
+    var artworkSessionID: UUID?
+    @Published var artworkStatus: String?
     @Published var state = LibraryState() { didSet { saveState() } }
     @Published var sleepDeadline: Date?
     @Published var stopAfterTrack = false
