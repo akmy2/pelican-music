@@ -1,11 +1,11 @@
-# Pelican Music — iOS pessoal
+# START — iOS pessoal
 
 Primeira versão nativa em SwiftUI, para iPhone/iPad com iOS 17 ou superior.
 
 ## O que está implementado
 
 - Biblioteca local persistente; importação múltipla pelo app Arquivos.
-- Reprodução offline, em segundo plano e com tela bloqueada via AVAudioSession.
+- Reprodução com AVPlayer, offline, em segundo plano e com tela bloqueada via AVAudioSession.
 - Play, pausa, anterior, próxima, avanço pela barra e AirPlay.
 - Controles do sistema via MPRemoteCommandCenter; tratamento de interrupções e remoção de fones.
 - Spotify: login OAuth com PKCE, validação de state, tokens no Keychain, renovação e comandos para o dispositivo ativo via Web API.
@@ -19,6 +19,17 @@ O código foi criado no Windows e **compilado com sucesso para iPhone pelo Xcode
 Build inicial: https://github.com/akmy2/pelican-music/actions/runs/41676179108
 
 SoundCloud e YouTube têm apenas atalhos externos nesta versão. Não há login SoundCloud, streaming SoundCloud, busca remota, sincronização de playlists, player YouTube incorporado nem fila misturando serviços. A interface informa essas limitações. Não são conexões simuladas.
+
+## Atualização 0.3.0
+
+- Removida a opção explícita `allowAirPlay` da categoria `playback`, que não precisa dessa opção para usar AirPlay. A configuração anterior podia produzir erro de parâmetro `-50`.
+- Motor local migrado de AVAudioPlayer para AVPlayer; importação passa a verificar AVURLAsset e presença de uma trilha de áudio.
+- Erros de formato/decodificação passam a explicar o problema em português e preservar os outros arquivos.
+- Testes de regressão verificam a configuração da sessão, importação de WAV válido, recusa de MP3 inválido e persistência da biblioteca.
+
+O arquivo específico recusado na captura do usuário ainda precisa ser testado: não foi fornecido seu conteúdo. A mudança não recupera downloads incompletos, arquivos protegidos nem converte formatos incompatíveis.
+
+Não há leitura automática da música tocada em Spotify/SoundCloud sem integração. O iOS não oferece uma API pública para ler os metadados de reprodução de outros aplicativos por meio do MPNowPlayingInfoCenter. Os links abrem os aplicativos de origem; login e comandos Spotify integrados continuam dependendo da autorização do serviço.
 
 Spotify usa o dispositivo já ativo: abra o Spotify e reproduza uma música antes de usar os comandos. O áudio e seus controles de tela bloqueada ficam sob responsabilidade do Spotify. Não há SDK App Remote nesta versão nem ativação automática de dispositivo. O controle via Web API exige rede, Premium e permissões de acesso do app. O app não baixa arquivos do Spotify. Ao iniciar áudio local, o iOS pode interromper outro player; ao enviar play ao Spotify, o app libera a sessão local.
 
