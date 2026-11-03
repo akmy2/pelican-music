@@ -17,6 +17,8 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var elapsed: Double = 0
     @Published var duration: Double = 0
     @Published var error: String?
+    @Published var importing = false
+    @Published var importStatus: String?
     private var audio: AVAudioPlayer?
     private var timer: Timer?
     private var resumeAfterInterruption = false
@@ -51,19 +53,52 @@ final class Player: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     func importFiles(_ urls: [URL]) {
-        for url in urls {
-            let access = url.startAccessingSecurityScopedResource()
-            defer { if access { url.stopAccessingSecurityScopedResource() } }
-            let id = UUID()
-            let filename = id.uuidString + "." + url.pathExtension
-            let destination = root.appendingPathComponent(filename)
-            do {
-                try FileManager.default.copyItem(at: url, to: destination)
-                do { _ = try AVAudioPlayer(contentsOf: destination) }
-                catch { try? FileManager.default.removeItem(at: destination); throw error }
-                tracks.append(Track(id: id, title: url.deletingPathExtension().lastPathComponent, file: filename))
-                save()
-            } catch { self.error = "Não foi possível importar \(url.lastPathComponent): \(error.localizedDescription)" }
+        guard !importing else { return }
+        guard !urls.isEmpty else { importStatus = "Nenhum arquivo selecionado."; return }
+        importing = true
+        importStatus = "Preparando \(urls.count) arquivo(s)…"
+        let directory = root
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var added: [Track] = []
+            var failures: [String] = []
+            for url in urls {
+                let access = url.startAccessingSecurityScopedResource()
+                defer { if access { url.stopAccessingSecurityScopedResource() } }
+                let id = UUID()
+                let ext = url.pathExtension.lowercased()
+                let filename = id.uuidString + (ext.isEmpty ? "" : "." + ext)
+                let destination = directory.appendingPathComponent(filename)
+                do {
+                    var coordinationError: NSError?
+                    var copyError: Error?
+                    NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { readable in
+                        do { try FileManager.default.copyItem(at: readable, to: destination) }
+                        catch { copyError = error }
+                    }
+                    if let coordinationError { throw coordinationError }
+                    if let copyError { throw copyError }
+                    let probe = try AVAudioPlayer(contentsOf: destination)
+                    guard probe.duration > 0 else {
+                        throw NSError(domain: "START.Import", code: 1, userInfo: [NSLocalizedDescriptionKey: "Arquivo vazio ou sem áudio reproduzível."])
+                    }
+                    added.append(Track(id: id, title: url.deletingPathExtension().lastPathComponent, file: filename))
+                } catch {
+                    try? FileManager.default.removeItem(at: destination)
+                    failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+                }
+            }
+            let importedTracks = added
+            let importFailures = failures
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.tracks.append(contentsOf: importedTracks)
+                self.save()
+                self.importing = false
+                self.importStatus = "\(importedTracks.count) música(s) importada(s)" + (importFailures.isEmpty ? "." : "; \(importFailures.count) arquivo(s) recusado(s).")
+                if !importFailures.isEmpty {
+                    self.error = importFailures.joined(separator: "\n\n") + "\n\nUse arquivos de áudio reais (MP3, M4A, WAV ou AAC). Downloads protegidos do Spotify e links não são arquivos importáveis."
+                }
+            }
         }
     }
 

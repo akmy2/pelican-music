@@ -15,19 +15,44 @@ struct ContentView: View {
     @EnvironmentObject var spotify: Spotify
     @State private var importing = false
     @State private var spotifyLink = ""
+    @State private var selectedTab = 0
+    private let lime = Color(red: 0.77, green: 1, blue: 0.08)
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 List {
                     Section {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("SUA MÚSICA. SEU ESPAÇO.").font(.caption).foregroundStyle(.mint)
-                            Text("Tudo começa\ncom um play.").font(.largeTitle.bold())
-                            Text("Importe suas músicas e ouça mesmo com a tela bloqueada.").foregroundStyle(.secondary)
-                            Button("Importar músicas", systemImage: "plus.circle.fill") { importing = true }.buttonStyle(.borderedProminent).tint(.mint)
-                        }.padding(.vertical, 12)
-                    }
-                    Section("Biblioteca · \(player.tracks.count) faixas") {
+                            Text("START").font(.system(size: 54, weight: .black, design: .rounded)).italic()
+                            Text("Sua música, no seu ritmo.").font(.title3).foregroundStyle(.secondary)
+                            Button { importing = true } label: {
+                                Label("Importar músicas", systemImage: "plus").font(.headline)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                            }.buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(lime).foregroundStyle(.black).disabled(player.importing).padding(.top, 12)
+                            if player.importing { ProgressView("Importando arquivos…") }
+                            if let status = player.importStatus { Text(status).font(.footnote).foregroundStyle(.secondary) }
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    Button { selectedTab = 1 } label: { Label("Arquivos", systemImage: "folder") }
+                                    Link("Spotify", destination: URL(string: "https://open.spotify.com")!)
+                                    Link("SoundCloud", destination: URL(string: "https://soundcloud.com")!)
+                                    Link("YouTube", destination: URL(string: "https://www.youtube.com")!)
+                                }.font(.caption.weight(.medium)).buttonStyle(.bordered).buttonBorderShape(.capsule).tint(.white)
+                            }.padding(.vertical, 12)
+                            ZStack(alignment: .bottomLeading) {
+                                RoundedRectangle(cornerRadius: 24).fill(LinearGradient(colors: [Color(red: 0.27, green: 0.12, blue: 0.23), .orange, Color(red: 0.18, green: 0.08, blue: 0.22)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                Circle().fill(.orange.opacity(0.6)).frame(width: 120, height: 120).offset(x: 180, y: -45)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Seu próximo play").font(.title.bold())
+                                    Text("Explore sua biblioteca").foregroundStyle(.white.opacity(0.85))
+                                    Button { player.resume() } label: {
+                                        Image(systemName: "play.fill").foregroundStyle(.black).padding(16).background(lime, in: Circle())
+                                    }.buttonStyle(.plain).disabled(player.tracks.isEmpty).padding(.top, 12)
+                                }.padding(24)
+                            }.frame(height: 210).clipped()
+                        }.padding(.vertical, 8)
+                    }.listRowBackground(Color.clear).listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    Section("Sua biblioteca · \(player.tracks.count) faixas") {
                         if player.tracks.isEmpty {
                             ContentUnavailableView("Sua biblioteca está pronta", systemImage: "music.note.list", description: Text("Adicione arquivos pelo iCloud Drive ou pelo app Arquivos."))
                         }
@@ -43,13 +68,42 @@ struct ContentView: View {
                             }
                         }.onDelete(perform: player.remove)
                     }
-                }.navigationTitle("Pelican Music")
+                }.scrollContentBackground(.hidden).background(Color(red: 0.045, green: 0.045, blue: 0.055))
+                    .navigationTitle("").navigationBarTitleDisplayMode(.inline)
                     .toolbar { EditButton() }
                     .safeAreaInset(edge: .bottom) { if player.current != nil { localControls } }
-            }.tabItem { Label("Biblioteca", systemImage: "square.stack.fill") }
+            }.tabItem { Label("Início", systemImage: "house.fill") }.tag(0)
+            NavigationStack {
+                List {
+                    Section {
+                        Button("Importar músicas", systemImage: "plus.circle.fill") { importing = true }.disabled(player.importing)
+                        if player.importing { ProgressView("Importando arquivos…") }
+                        if let status = player.importStatus { Text(status).font(.footnote) }
+                    }
+                    Section("\(player.tracks.count) músicas · Offline") {
+                        if player.tracks.isEmpty {
+                            ContentUnavailableView("Adicione sua primeira música", systemImage: "music.note", description: Text("Selecione MP3, M4A, WAV ou AAC no app Arquivos."))
+                        }
+                        ForEach(player.tracks) { track in
+                            Button { player.play(track) } label: {
+                                Label(track.title, systemImage: player.current?.id == track.id ? "waveform" : "music.note").foregroundStyle(.primary)
+                            }
+                        }.onDelete(perform: player.remove)
+                    }
+                }.navigationTitle("Biblioteca").toolbar { EditButton() }
+                    .safeAreaInset(edge: .bottom) { if player.current != nil { localControls } }
+            }.tabItem { Label("Biblioteca", systemImage: "music.note.list") }.tag(1)
             NavigationStack {
                 Form {
-                    Section("Spotify Premium") {
+                    Section("Usar as contas do telefone") {
+                        Text("Abra o serviço e use a conta que já está conectada no iPhone. Nesse modo, a reprodução e os controles pertencem ao aplicativo de origem; não há conexão da conta ao START.").font(.footnote)
+                        Link("Abrir Spotify no telefone", destination: URL(string: "https://open.spotify.com")!)
+                        Link("Abrir SoundCloud no telefone", destination: URL(string: "https://soundcloud.com")!)
+                    }
+                    Section("Controles fora do START") {
+                        Text("As músicas locais usam os controles de áudio do iOS na tela bloqueada e na Central de Controle: play, pausa, anterior e próxima. A apresentação na Dynamic Island é gerenciada pelo sistema nos modelos compatíveis.").font(.footnote)
+                    }
+                    Section("Spotify Premium · Integração opcional por API") {
                         Label(spotify.connected ? "Conta conectada" : "Conecte seu Spotify", systemImage: "antenna.radiowaves.left.and.right").foregroundStyle(.mint)
                         Text("O Spotify executa o áudio. Abra-o e inicie uma música para ativar o iPhone; depois use os controles aqui.").font(.footnote)
                         TextField("Spotify Client ID", text: $spotify.clientID).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -86,13 +140,13 @@ struct ContentView: View {
                         Link("Abrir YouTube", destination: URL(string: "https://www.youtube.com")!)
                     }
                 }.navigationTitle("Conexões")
-            }.tabItem { Label("Conexões", systemImage: "link") }
-        }.tint(.mint)
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.audio], allowsMultipleSelection: true) { result in
-            switch result {
-            case .success(let urls): player.importFiles(urls)
-            case .failure(let error): player.error = error.localizedDescription
-            }
+            }.tabItem { Label("Conexões", systemImage: "link") }.tag(2)
+        }.tint(lime)
+        .sheet(isPresented: $importing) {
+            AudioImporter(onSelection: { urls in
+                importing = false
+                player.importFiles(urls)
+            }, onCancel: { importing = false })
         }
         .alert("Não foi possível concluir", isPresented: Binding(get: { player.error != nil }, set: { if !$0 { player.error = nil } })) {
             Button("OK") { player.error = nil }
